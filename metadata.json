@@ -1,0 +1,6 @@
+{
+  "name": "The Role Dispatch",
+  "description": "An editorial job publication connecting candidates directly to verified career opportunities without noise or friction.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
