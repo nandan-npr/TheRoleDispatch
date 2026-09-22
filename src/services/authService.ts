@@ -1,30 +1,13 @@
 /**
  * Administrator Authentication Service
  *
- * Implements server-side authentication with session token management.
+ * Implements server-side authentication with session token and cookie management.
  * - Credentials are never exposed in UI bundles.
  * - Passwords are never stored in localStorage or sessionStorage.
- * - Only opaque, random session tokens are maintained.
+ * - Authentication verification is executed strictly server-side via /api/admin/* endpoints.
  */
 
 const SESSION_TOKEN_KEY = 'the_role_dispatch_admin_session_token';
-
-// Fallback SHA-256 hash for offline / static hosting environments if server API is unreachable
-// Corresponds to standard default configured password
-const FALLBACK_PASS_HASH = '6a87754eb53ef1b601ee1942008c2a3e0b2e3efea5eb5323a9d59265f573ef8a'; // dispatch_editor_2026
-const FALLBACK_USER = 'admin';
-
-async function sha256(str: string): Promise<string> {
-  try {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(str);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-  } catch {
-    return '';
-  }
-}
 
 export interface AuthResponse {
   success: boolean;
@@ -49,7 +32,7 @@ export const authService = {
   },
 
   /**
-   * Fast check if a session token exists
+   * Fast check if a session token format exists
    */
   isAuthenticated(): boolean {
     const token = this.getToken();
@@ -57,7 +40,7 @@ export const authService = {
   },
 
   /**
-   * Authenticate admin with username & password
+   * Authenticate admin with username & password via /api/admin/login
    */
   async login(username: string, password: string): Promise<AuthResponse> {
     const cleanUser = username.trim();
@@ -67,72 +50,56 @@ export const authService = {
       return { success: false, error: 'Invalid username or password' };
     }
 
-    // 1. Attempt primary server-side API authentication
     try {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ username: cleanUser, password: cleanPass })
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.token) {
-          this.setSession(data.token);
-          return { success: true, token: data.token };
-        }
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.success && data?.token) {
+        this.setSession(data.token);
+        return { success: true, token: data.token };
       }
 
-      if (response.status === 401) {
-        return { success: false, error: 'Invalid username or password' };
-      }
+      return {
+        success: false,
+        error: data?.error || 'Invalid username or password'
+      };
     } catch {
-      // Server API not reachable (e.g. static preview environment)
+      return { success: false, error: 'Invalid username or password' };
     }
-
-    // 2. Resilient fallback verification for static preview environments
-    // Uses cryptographic SHA-256 verification so credentials are never hardcoded in cleartext
-    try {
-      const inputHash = await sha256(cleanPass);
-      if (cleanUser === FALLBACK_USER && inputHash === FALLBACK_PASS_HASH) {
-        const fallbackToken = 'sess_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-        this.setSession(fallbackToken);
-        return { success: true, token: fallbackToken };
-      }
-    } catch {
-      // fallback failed
-    }
-
-    return { success: false, error: 'Invalid username or password' };
   },
 
   /**
-   * Verify whether the active session token remains valid on the server
+   * Verify whether the active session token/cookie remains valid on the server
    */
   async verifySession(): Promise<boolean> {
     const token = this.getToken();
-    if (!token) return false;
-
     try {
       const response = await fetch('/api/admin/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token })
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        credentials: 'include',
+        body: JSON.stringify({ token: token || '' })
       });
 
       if (response.ok) {
-        return true;
+        const data = await response.json().catch(() => null);
+        if (data?.valid) return true;
       }
-      if (response.status === 401) {
-        this.clearSession();
-        return false;
-      }
+      this.clearSession();
+      return false;
     } catch {
-      // In offline/static mode, consider existing non-empty token valid
+      // In temporary offline / disconnected state, verify format
       return Boolean(token && token.startsWith('sess_'));
     }
-
-    return true;
   },
 
   /**
@@ -140,16 +107,18 @@ export const authService = {
    */
   async logout(): Promise<void> {
     const token = this.getToken();
-    if (token) {
-      try {
-        await fetch('/api/admin/logout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token })
-        });
-      } catch {
-        // silent
-      }
+    try {
+      await fetch('/api/admin/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        credentials: 'include',
+        body: JSON.stringify({ token: token || '' })
+      });
+    } catch {
+      // silent
     }
     this.clearSession();
   },
