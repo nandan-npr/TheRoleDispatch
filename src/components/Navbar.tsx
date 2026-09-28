@@ -10,7 +10,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdminLogin }) => {
   const { currentView, navigateToView, publishedJobs, isAdminAuthenticated } = useJobs();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleNav = (view: 'home' | 'jobs' | 'categories' | 'admin') => {
+  const handleNav = (view: 'home' | 'jobs' | 'categories' | 'contact' | 'admin') => {
     navigateToView(view);
     setMobileMenuOpen(false);
   };
@@ -39,8 +39,20 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdminLogin }) => {
             </p>
           </div>
 
-          {/* Desktop Navigation Links */}
+          {/* Desktop Navigation Links: HOME | JOBS | CATEGORIES | SEARCH DIRECTORY */}
           <nav className="hidden md:flex items-center gap-8">
+            <button
+              id="nav-link-home"
+              onClick={() => handleNav('home')}
+              className={`text-sm font-medium tracking-wide transition-colors relative py-1 ${
+                currentView === 'home'
+                  ? 'text-[#7A1C28] font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#7A1C28]'
+                  : 'text-[#3F3F46] hover:text-[#141416]'
+              }`}
+            >
+              Home
+            </button>
+
             <button
               id="nav-link-jobs"
               onClick={() => handleNav('jobs')}
@@ -69,9 +81,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdminLogin }) => {
             </button>
 
             <button
+              id="nav-link-contact"
+              onClick={() => handleNav('contact')}
+              className={`text-sm font-medium tracking-wide transition-colors relative py-1 ${
+                currentView === 'contact'
+                  ? 'text-[#7A1C28] font-semibold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#7A1C28]'
+                  : 'text-[#3F3F46] hover:text-[#141416]'
+              }`}
+            >
+              Contact
+            </button>
+
+            <button
               id="nav-link-search"
               onClick={() => handleNav('jobs')}
-              className="flex items-center gap-2 text-sm font-medium text-[#3F3F46] hover:text-[#7A1C28] px-3.5 py-1.5 rounded-sm border border-[#E7E2D9] bg-[#FFFFFF] hover:border-[#7A1C28]/40 transition-all shadow-xs"
+              className="flex items-center gap-2 text-sm font-medium text-[#3F3F46] hover:text-[#7A1C28] px-3.5 py-1.5 rounded-sm border border-[#E7E2D9] bg-[#FFFFFF] hover:border-[#7A1C28]/40 transition-all shadow-xs cursor-pointer"
             >
               <Search className="w-3.5 h-3.5 text-[#7A1C28]" />
               <span>Search Directory</span>
@@ -104,7 +128,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdminLogin }) => {
             <button
               id="mobile-menu-toggle"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-[#3F3F46] hover:text-[#141416] focus:outline-none"
+              className="p-2 text-[#3F3F46] hover:text-[#141416] focus:outline-none cursor-pointer"
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -117,11 +141,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdminLogin }) => {
       {mobileMenuOpen && (
         <div className="md:hidden border-b border-[#E7E2D9] bg-[#FFFFFF] px-4 pt-3 pb-6 space-y-3 shadow-lg">
           <button
+            id="mobile-nav-home"
+            onClick={() => handleNav('home')}
+            className={`flex items-center justify-between w-full py-2.5 text-left text-base font-medium border-b border-[#F0EBE1] cursor-pointer ${
+              currentView === 'home' ? 'text-[#7A1C28] font-semibold' : 'text-[#141416]'
+            }`}
+          >
+            <span>Home</span>
+          </button>
+
+          <button
             id="mobile-nav-jobs"
             onClick={() => handleNav('jobs')}
-            className="flex items-center justify-between w-full py-2.5 text-left text-base font-medium text-[#141416] border-b border-[#F0EBE1]"
+            className={`flex items-center justify-between w-full py-2.5 text-left text-base font-medium border-b border-[#F0EBE1] cursor-pointer ${
+              currentView === 'jobs' ? 'text-[#7A1C28] font-semibold' : 'text-[#141416]'
+            }`}
           >
-            <span>Job Listings</span>
+            <span>Jobs</span>
             <span className="text-xs px-2 py-0.5 rounded bg-[#F0EBE1] text-[#52525B]">
               {publishedJobs.length} active
             </span>
@@ -130,25 +166,38 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdminLogin }) => {
           <button
             id="mobile-nav-categories"
             onClick={() => handleNav('categories')}
-            className="flex items-center justify-between w-full py-2.5 text-left text-base font-medium text-[#141416] border-b border-[#F0EBE1]"
+            className={`flex items-center justify-between w-full py-2.5 text-left text-base font-medium border-b border-[#F0EBE1] cursor-pointer ${
+              currentView === 'categories' ? 'text-[#7A1C28] font-semibold' : 'text-[#141416]'
+            }`}
           >
-            <span>Browse Categories</span>
+            <span>Categories</span>
+            <ArrowRight className="w-4 h-4 text-[#7A1C28]" />
+          </button>
+
+          <button
+            id="mobile-nav-contact"
+            onClick={() => handleNav('contact')}
+            className={`flex items-center justify-between w-full py-2.5 text-left text-base font-medium border-b border-[#F0EBE1] cursor-pointer ${
+              currentView === 'contact' ? 'text-[#7A1C28] font-semibold' : 'text-[#141416]'
+            }`}
+          >
+            <span>Contact & Feedback</span>
             <ArrowRight className="w-4 h-4 text-[#7A1C28]" />
           </button>
 
           <button
             id="mobile-nav-search"
             onClick={() => handleNav('jobs')}
-            className="flex items-center gap-2 w-full py-2.5 text-left text-base font-medium text-[#7A1C28]"
+            className="flex items-center gap-2 w-full py-2.5 text-left text-base font-medium text-[#7A1C28] cursor-pointer"
           >
             <Search className="w-4 h-4" />
-            <span>Search All Openings</span>
+            <span>Search Directory</span>
           </button>
 
           {isAdminAuthenticated && (
             <button
               onClick={() => handleNav('admin')}
-              className="flex items-center gap-2 w-full py-2 text-left text-sm font-semibold text-[#7A1C28] bg-[#7A1C28]/5 px-3 rounded"
+              className="flex items-center gap-2 w-full py-2 text-left text-sm font-semibold text-[#7A1C28] bg-[#7A1C28]/5 px-3 rounded cursor-pointer"
             >
               <Shield className="w-4 h-4" />
               <span>Editorial Desk</span>

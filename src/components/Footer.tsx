@@ -1,6 +1,6 @@
 import React from 'react';
 import { useJobs } from '../context/JobContext';
-import { Shield, ArrowUpRight, CheckCircle, ExternalLink } from 'lucide-react';
+import { Shield, ArrowUpRight, CheckCircle, ExternalLink, MessageSquare } from 'lucide-react';
 
 interface FooterProps {
   onOpenAdminLogin?: () => void;
@@ -88,6 +88,15 @@ export const Footer: React.FC<FooterProps> = () => {
               </li>
               <li>
                 <button
+                  id="footer-contact-index-link"
+                  onClick={() => navigateToView('contact')}
+                  className="hover:text-[#7A1C28] hover:underline"
+                >
+                  Contact & Feedback
+                </button>
+              </li>
+              <li>
+                <button
                   onClick={() => navigateToCategory('IT Fresher')}
                   className="hover:text-[#7A1C28] hover:underline"
                 >
@@ -161,8 +170,17 @@ export const Footer: React.FC<FooterProps> = () => {
             © {new Date().getFullYear()} The Role Dispatch. Authentic listings curated from verified corporate endpoints.
           </div>
 
-          {/* Discreet Admin Access Trigger */}
-          <div className="flex items-center gap-4">
+          {/* Contact & Discreet Admin Access Trigger */}
+          <div className="flex items-center gap-6">
+            <button
+              id="footer-contact-link"
+              onClick={() => navigateToView('contact')}
+              className="hover:text-[#7A1C28] flex items-center gap-1.5 transition-colors cursor-pointer text-[#71717A]"
+            >
+              <MessageSquare className="w-3 h-3 text-[#7A1C28]" />
+              <span>Contact & Feedback</span>
+            </button>
+
             <button
               id="footer-admin-login-trigger"
               onClick={() => navigateToView('admin')}

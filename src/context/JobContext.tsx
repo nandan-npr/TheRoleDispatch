@@ -1,18 +1,51 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { Job, JobFilters, JobStatus, JobCategory } from '../types';
 import { SEED_JOBS } from '../data/seedJobs';
 import { authService } from '../services/authService';
+import { feedbackService } from '../services/feedbackService';
 
-export type ViewType = 'home' | 'jobs' | 'categories' | 'job-details' | 'admin' | 'admin-login';
+export type ViewType = 'home' | 'jobs' | 'categories' | 'job-details' | 'admin' | 'admin-login' | 'contact';
+export type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated';
+
+export function parseRouteFromUrl(): { view: ViewType; jobId: string | null } {
+  if (typeof window === 'undefined') return { view: 'home', jobId: null };
+  const rawPath = window.location.pathname.toLowerCase();
+  const rawHash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+  const active = rawHash || (rawPath.startsWith('/') && rawPath !== '/' ? rawPath.slice(1) : '');
+
+  if (active === 'contact' || active.startsWith('contact')) {
+    return { view: 'contact', jobId: null };
+  }
+  if (active === 'admin/login' || active.startsWith('admin/login')) {
+    return { view: 'admin-login', jobId: null };
+  }
+  if (active === 'admin' || active.startsWith('admin/')) {
+    return { view: 'admin', jobId: null };
+  }
+  if (active.startsWith('job/')) {
+    const jobId = active.replace('job/', '').split('/')[0];
+    return { view: 'job-details', jobId: jobId || null };
+  }
+  if (active === 'jobs') {
+    return { view: 'jobs', jobId: null };
+  }
+  if (active === 'categories') {
+    return { view: 'categories', jobId: null };
+  }
+  return { view: 'home', jobId: null };
+}
 
 interface JobContextType {
   jobs: Job[];
   publishedJobs: Job[];
   currentView: ViewType;
   selectedJobId: string | null;
+  setSelectedJobId: (id: string | null) => void;
   selectedJob: Job | null;
   filters: JobFilters;
+  authStatus: AuthStatus;
   isAdminAuthenticated: boolean;
+  isAuthChecking: boolean;
   selectedCategoryForBrowse: JobCategory | null;
   
   // Navigation
@@ -35,10 +68,13 @@ interface JobContextType {
   setMultipleJobStatus: (ids: string[], status: JobStatus) => void;
   resetToSeedData: () => void;
   
-  // Admin Auth
+  // Admin Auth & Feedback
   loginAdmin: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logoutAdmin: () => Promise<void>;
   checkAdminAuth: () => Promise<boolean>;
+  unreadFeedbackCount: number;
+  setUnreadFeedbackCount: React.Dispatch<React.SetStateAction<number>>;
+  refreshFeedbackCount: () => Promise<void>;
 }
 
 const STORAGE_KEY = 'the_role_dispatch_jobs_v2';
@@ -73,31 +109,70 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return SEED_JOBS;
   });
 
-  const [currentView, setCurrentView] = useState<ViewType>('home');
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const initialRoute = parseRouteFromUrl();
+  const [currentView, setCurrentView] = useState<ViewType>(initialRoute.view);
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(initialRoute.jobId);
   const [filters, setFilters] = useState<JobFilters>(DEFAULT_FILTERS);
   const [selectedCategoryForBrowse, setSelectedCategoryForBrowse] = useState<JobCategory | null>(null);
 
-  // Secure admin session state initialized from token check
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() =>
-    authService.isAuthenticated()
-  );
+  // Strict 3-state authentication state model
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('checking');
+  const authSequenceRef = useRef<number>(0);
 
-  // Validate session with server on startup and window focus
-  useEffect(() => {
-    const verify = async () => {
-      if (authService.isAuthenticated()) {
-        const isValid = await authService.verifySession();
-        setIsAdminAuthenticated(isValid);
-        if (!isValid && (currentView === 'admin' || currentView === 'admin-login')) {
-          setCurrentView('admin-login');
-        }
-      } else {
-        setIsAdminAuthenticated(false);
+  // Helper flags
+  const isAdminAuthenticated = authStatus === 'authenticated';
+  const isAuthChecking = authStatus === 'checking';
+
+  // Feedback unread count state for admin navigation
+  const [unreadFeedbackCount, setUnreadFeedbackCount] = useState<number>(0);
+
+  const refreshFeedbackCount = useCallback(async () => {
+    if (authStatus !== 'authenticated') return;
+    try {
+      const res = await feedbackService.getAdminFeedback();
+      if (res.success && res.stats) {
+        setUnreadFeedbackCount(res.stats.unread);
       }
+    } catch {
+      // silent
+    }
+  }, [authStatus]);
+
+  useEffect(() => {
+    if (authStatus === 'authenticated') {
+      refreshFeedbackCount();
+    } else {
+      setUnreadFeedbackCount(0);
+    }
+  }, [authStatus, refreshFeedbackCount]);
+
+  // Validate session with server once on initial app mount
+  useEffect(() => {
+    let isMounted = true;
+    const seq = ++authSequenceRef.current;
+    console.log('[AUTH] verify started: initial startup (seq:', seq, ')');
+
+    authService.verifySession().then(isValid => {
+      if (!isMounted) return;
+      if (seq !== authSequenceRef.current) {
+        console.log('[AUTH] ignoring stale initial verify result (seq:', seq, 'current:', authSequenceRef.current, ')');
+        return;
+      }
+      console.log('[AUTH] verify result:', isValid);
+      console.log('[AUTH] authentication state changed:', isValid ? 'authenticated' : 'unauthenticated');
+      setAuthStatus(isValid ? 'authenticated' : 'unauthenticated');
+    }).catch(() => {
+      if (isMounted && seq === authSequenceRef.current) {
+        console.log('[AUTH] verify result: false (error)');
+        console.log('[AUTH] authentication state changed: unauthenticated');
+        setAuthStatus('unauthenticated');
+      }
+    });
+
+    return () => {
+      isMounted = false;
     };
-    verify();
-  }, [currentView]);
+  }, []);
 
   // Backup sync to localStorage when jobs change
   useEffect(() => {
@@ -113,34 +188,62 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const selectedJob = selectedJobId ? jobs.find(j => j.id === selectedJobId) || null : null;
 
-  const navigateToJobDetails = (jobId: string) => {
+  const navigateToJobDetails = useCallback((jobId: string) => {
     setSelectedJobId(jobId);
     setCurrentView('job-details');
+    const targetUrl = `/job/${jobId}`;
+    if (window.location.pathname !== targetUrl) {
+      window.history.pushState(null, '', targetUrl);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
 
-  const navigateToCategory = (category: JobCategory) => {
+  const navigateToCategory = useCallback((category: JobCategory) => {
     setSelectedCategoryForBrowse(category);
     setFilters(prev => ({ ...prev, category }));
     setCurrentView('jobs');
+    if (window.location.pathname !== '/jobs') {
+      window.history.pushState(null, '', '/jobs');
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, []);
 
-  const navigateToView = (view: ViewType) => {
+  const navigateToView = useCallback((view: ViewType) => {
     if (view !== 'job-details') {
       setSelectedJobId(null);
     }
-    // Strict Route Guard: protect admin dashboard from unauthenticated access
-    if (view === 'admin') {
-      if (!isAdminAuthenticated && !authService.isAuthenticated()) {
-        setCurrentView('admin-login');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
+
+    let targetView = view;
+    let targetUrl = '/';
+
+    if (view === 'home') {
+      targetUrl = '/';
+    } else if (view === 'jobs') {
+      targetUrl = '/jobs';
+    } else if (view === 'categories') {
+      targetUrl = '/categories';
+    } else if (view === 'contact') {
+      targetView = 'contact';
+      targetUrl = '/contact';
+    } else if (view === 'admin') {
+      if (authStatus === 'authenticated' || authStatus === 'checking') {
+        targetView = 'admin';
+        targetUrl = '/admin/dashboard';
+      } else {
+        targetView = 'admin-login';
+        targetUrl = '/admin/login';
       }
+    } else if (view === 'admin-login') {
+      targetView = 'admin-login';
+      targetUrl = '/admin/login';
     }
-    setCurrentView(view);
+
+    setCurrentView(targetView);
+    if (window.location.pathname !== targetUrl) {
+      window.history.pushState(null, '', targetUrl);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, [authStatus]);
 
   const updateFilter = <K extends keyof JobFilters>(key: K, value: JobFilters[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -250,23 +353,42 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     username: string,
     password: string
   ): Promise<{ success: boolean; error?: string }> => {
+    console.log('[AUTH] login started');
+    const seq = ++authSequenceRef.current;
     const res = await authService.login(username, password);
+
     if (res.success) {
-      setIsAdminAuthenticated(true);
+      console.log('[AUTH] login success');
+      console.log('[AUTH] authentication state changed: authenticated (seq:', seq, ')');
+      setAuthStatus('authenticated');
+      setCurrentView('admin');
+      window.history.replaceState(null, '', '/admin/dashboard');
       return { success: true };
     }
+
+    console.log('[AUTH] login failed:', res.error);
     return { success: false, error: res.error || 'Invalid username or password' };
   };
 
   const logoutAdmin = async () => {
+    console.log('[AUTH] logout called');
+    ++authSequenceRef.current;
     await authService.logout();
-    setIsAdminAuthenticated(false);
-    navigateToView('admin-login');
+    console.log('[AUTH] authentication state changed: unauthenticated');
+    setAuthStatus('unauthenticated');
+    setCurrentView('admin-login');
+    window.history.replaceState(null, '', '/admin/login');
   };
 
   const checkAdminAuth = async (): Promise<boolean> => {
+    console.log('[AUTH] verify started: checkAdminAuth');
+    const seq = ++authSequenceRef.current;
     const isValid = await authService.verifySession();
-    setIsAdminAuthenticated(isValid);
+    if (seq === authSequenceRef.current) {
+      console.log('[AUTH] verify result:', isValid);
+      console.log('[AUTH] authentication state changed:', isValid ? 'authenticated' : 'unauthenticated');
+      setAuthStatus(isValid ? 'authenticated' : 'unauthenticated');
+    }
     return isValid;
   };
 
@@ -277,9 +399,12 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         publishedJobs,
         currentView,
         selectedJobId,
+        setSelectedJobId,
         selectedJob,
         filters,
+        authStatus,
         isAdminAuthenticated,
+        isAuthChecking,
         selectedCategoryForBrowse,
         setCurrentView,
         navigateToJobDetails,
@@ -297,7 +422,10 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetToSeedData,
         loginAdmin,
         logoutAdmin,
-        checkAdminAuth
+        checkAdminAuth,
+        unreadFeedbackCount,
+        setUnreadFeedbackCount,
+        refreshFeedbackCount
       }}
     >
       {children}

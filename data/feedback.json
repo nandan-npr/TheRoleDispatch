@@ -1,0 +1,68 @@
+[
+  {
+    "id": "fb_1790603813757_q7mxqw",
+    "name": "Nandan",
+    "email": "nandanpruthvi1@gmail.com",
+    "type": "General Feedback",
+    "subject": "Add specific job link",
+    "message": "add pls we are waiting",
+    "status": "unread",
+    "createdAt": "2026-09-28T13:56:53.757Z",
+    "updatedAt": "2026-09-28T13:56:53.757Z"
+  },
+  {
+    "id": "fb_1790603744904_iiwa0q",
+    "name": "Nandan",
+    "email": "nandanpruthvi1@gmail.com",
+    "type": "Feature Request",
+    "subject": "Add specific job link",
+    "message": "Pls make sure it will update fastly, we  are waiting",
+    "status": "unread",
+    "createdAt": "2026-09-28T13:55:44.904Z",
+    "updatedAt": "2026-09-28T13:55:44.904Z"
+  },
+  {
+    "id": "fb_1790573894384_en8dq6",
+    "name": "Tester Test",
+    "email": "test@example.com",
+    "type": "General Feedback",
+    "subject": "Testing feedback API",
+    "message": "This is a valid test message that exceeds ten characters.",
+    "status": "unread",
+    "createdAt": "2026-09-28T05:38:14.384Z",
+    "updatedAt": "2026-09-28T05:38:14.384Z"
+  },
+  {
+    "id": "fb_1727480001001_sug",
+    "name": "Priya Sharma",
+    "email": "priya.sharma@example.com",
+    "type": "Job Suggestion",
+    "subject": "Request for Bangalore DevOps & Platform Engineering Roles",
+    "message": "Could you please include listings for junior-to-mid Cloud & DevOps positions at verified engineering hubs in Bangalore? Love the authentic direct application links without middleman redirects!",
+    "status": "unread",
+    "createdAt": "2026-09-28T03:38:14.382Z",
+    "updatedAt": "2026-09-28T03:38:14.383Z"
+  },
+  {
+    "id": "fb_1727480002002_iss",
+    "name": "Karthik Raja",
+    "email": "karthik.r@example.com",
+    "type": "Job Listing Issue",
+    "subject": "Amazon SDE 1 link redirected to career home instead of requisition",
+    "message": "The listing for Amazon SDE 1 seemed to route to the main Amazon jobs portal rather than the direct job ID. The listing role is genuine, but direct link could be refreshed.",
+    "status": "read",
+    "createdAt": "2026-09-27T03:38:14.383Z",
+    "updatedAt": "2026-09-27T19:38:14.383Z"
+  },
+  {
+    "id": "fb_1727480003003_gen",
+    "name": "Ananya Verma",
+    "email": "ananya.v@example.com",
+    "type": "General Feedback",
+    "subject": "Clean and editorial layout is refreshing",
+    "message": "The typographic hierarchy and lack of popup ads makes browsing jobs actually pleasant. Appreciate the verified company filters.",
+    "status": "read",
+    "createdAt": "2026-09-25T05:38:14.383Z",
+    "updatedAt": "2026-09-26T05:38:14.383Z"
+  }
+]

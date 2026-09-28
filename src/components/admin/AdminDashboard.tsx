@@ -4,6 +4,7 @@ import { Job, JobStatus, JobCategory, JobSource } from '../../types';
 import { ALL_CATEGORIES, ALL_SOURCES } from '../../data/categories';
 import { JobFormModal } from './JobFormModal';
 import { JobPreviewModal } from './JobPreviewModal';
+import { AdminFeedbackView } from './AdminFeedbackView';
 import {
   Plus,
   Search,
@@ -19,7 +20,9 @@ import {
   AlertTriangle,
   X,
   ArrowRight,
-  LogOut
+  LogOut,
+  MessageSquare,
+  Briefcase
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -33,8 +36,25 @@ export const AdminDashboard: React.FC = () => {
     setMultipleJobStatus,
     resetToSeedData,
     navigateToView,
-    logoutAdmin
+    logoutAdmin,
+    unreadFeedbackCount
   } = useJobs();
+
+  // Active Admin Section Tab: 'jobs' | 'feedback'
+  const [activeTab, setActiveTab] = useState<'jobs' | 'feedback'>(() => {
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/admin/feedback')) {
+      return 'feedback';
+    }
+    return 'jobs';
+  });
+
+  const handleSwitchTab = (tab: 'jobs' | 'feedback') => {
+    setActiveTab(tab);
+    const targetUrl = tab === 'feedback' ? '/admin/feedback' : '/admin/dashboard';
+    if (window.location.pathname !== targetUrl) {
+      window.history.pushState(null, '', targetUrl);
+    }
+  };
 
   // Filters state
   const [searchQuery, setSearchQuery] = useState('');
@@ -312,48 +332,119 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Simple Statistics per prompt: Total Jobs, Published, Draft, On Hold */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-        <div className="p-4 sm:p-5 bg-[#FFFFFF] border border-[#E7E2D9] shadow-2xs">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-[#71717A]">
-            Total Jobs
-          </div>
-          <div className="mt-2 text-3xl font-serif font-bold text-[#141416]">
-            {stats.total}
-          </div>
-          <div className="mt-1 text-[11px] text-[#52525B]">Managed database items</div>
-        </div>
+      {/* Admin Section Tabs: Job Postings & Feedback */}
+      <div className="flex items-center gap-2 border-b border-[#E7E2D9] mb-8">
+        <button
+          type="button"
+          id="admin-tab-jobs"
+          onClick={() => handleSwitchTab('jobs')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'jobs'
+              ? 'border-[#7A1C28] text-[#7A1C28] bg-[#FFFFFF] font-bold'
+              : 'border-transparent text-[#71717A] hover:text-[#141416]'
+          }`}
+        >
+          <Briefcase className="w-4 h-4" />
+          <span>Job Postings</span>
+          <span className="ml-1 text-[11px] font-mono px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600">
+            {jobs.length}
+          </span>
+        </button>
 
-        <div className="p-4 sm:p-5 bg-[#FFFFFF] border border-emerald-200/80 shadow-2xs">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
-            Published
-          </div>
-          <div className="mt-2 text-3xl font-serif font-bold text-emerald-700">
-            {stats.published}
-          </div>
-          <div className="mt-1 text-[11px] text-emerald-600/90">Visible to public applicants</div>
-        </div>
-
-        <div className="p-4 sm:p-5 bg-[#FFFFFF] border border-amber-200/80 shadow-2xs">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-700">
-            Draft
-          </div>
-          <div className="mt-2 text-3xl font-serif font-bold text-amber-700">
-            {stats.draft}
-          </div>
-          <div className="mt-1 text-[11px] text-amber-600/90">Work in progress (hidden)</div>
-        </div>
-
-        <div className="p-4 sm:p-5 bg-[#FFFFFF] border border-neutral-300 shadow-2xs">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-600">
-            On Hold
-          </div>
-          <div className="mt-2 text-3xl font-serif font-bold text-neutral-700">
-            {stats.hold}
-          </div>
-          <div className="mt-1 text-[11px] text-neutral-500">Temporarily paused roles</div>
-        </div>
+        <button
+          type="button"
+          id="admin-tab-feedback"
+          onClick={() => handleSwitchTab('feedback')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold uppercase tracking-wider border-b-2 transition-colors cursor-pointer ${
+            activeTab === 'feedback'
+              ? 'border-[#7A1C28] text-[#7A1C28] bg-[#FFFFFF] font-bold'
+              : 'border-transparent text-[#71717A] hover:text-[#141416]'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4" />
+          <span>Feedback</span>
+          {unreadFeedbackCount > 0 ? (
+            <span className="ml-1 text-[11px] font-mono px-2 py-0.5 rounded-full bg-[#7A1C28] text-white font-bold">
+              {unreadFeedbackCount}
+            </span>
+          ) : (
+            <span className="ml-1 text-[11px] font-mono px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-500">
+              0
+            </span>
+          )}
+        </button>
       </div>
+
+      {activeTab === 'feedback' ? (
+        <AdminFeedbackView onBackToJobs={() => handleSwitchTab('jobs')} />
+      ) : (
+        <>
+          {/* Simple Statistics per prompt: Total Jobs, Published, Draft, On Hold, New Feedback */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+            <div className="p-4 sm:p-5 bg-[#FFFFFF] border border-[#E7E2D9] shadow-2xs">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-[#71717A]">
+                Total Jobs
+              </div>
+              <div className="mt-2 text-3xl font-serif font-bold text-[#141416]">
+                {stats.total}
+              </div>
+              <div className="mt-1 text-[11px] text-[#52525B]">Managed database items</div>
+            </div>
+
+            <div className="p-4 sm:p-5 bg-[#FFFFFF] border border-emerald-200/80 shadow-2xs">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700">
+                Published
+              </div>
+              <div className="mt-2 text-3xl font-serif font-bold text-emerald-700">
+                {stats.published}
+              </div>
+              <div className="mt-1 text-[11px] text-emerald-600/90">Visible to public applicants</div>
+            </div>
+
+            <div className="p-4 sm:p-5 bg-[#FFFFFF] border border-amber-200/80 shadow-2xs">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-amber-700">
+                Draft
+              </div>
+              <div className="mt-2 text-3xl font-serif font-bold text-amber-700">
+                {stats.draft}
+              </div>
+              <div className="mt-1 text-[11px] text-amber-600/90">Work in progress (hidden)</div>
+            </div>
+
+            <div className="p-4 sm:p-5 bg-[#FFFFFF] border border-neutral-300 shadow-2xs">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-neutral-600">
+                On Hold
+              </div>
+              <div className="mt-2 text-3xl font-serif font-bold text-neutral-700">
+                {stats.hold}
+              </div>
+              <div className="mt-1 text-[11px] text-neutral-500">Temporarily paused roles</div>
+            </div>
+
+            {/* 5th Summary Card: New Feedback */}
+            <div
+              id="admin-dashboard-feedback-card"
+              onClick={() => handleSwitchTab('feedback')}
+              className="p-4 sm:p-5 bg-[#FFFFFF] border border-[#7A1C28]/40 hover:border-[#7A1C28] shadow-2xs cursor-pointer transition-colors group"
+              title="View all reader inquiries and feedback"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-[#7A1C28]">
+                  New Feedback
+                </div>
+                <MessageSquare className="w-3.5 h-3.5 text-[#7A1C28] group-hover:scale-110 transition-transform" />
+              </div>
+              <div className="mt-2 text-3xl font-serif font-bold text-[#7A1C28]">
+                {unreadFeedbackCount}
+              </div>
+              <div className="mt-1 text-[11px] text-[#7A1C28]/80 font-medium flex items-center justify-between">
+                <span>Unread messages</span>
+                <span className="text-[10px] uppercase font-bold tracking-wider group-hover:underline">
+                  View &rarr;
+                </span>
+              </div>
+            </div>
+          </div>
 
       {/* Information-Dense Filter Bar per prompt: Search, Status, Category, Source, Location, Sort */}
       <div className="bg-[#FFFFFF] border border-[#E7E2D9] p-4 mb-6 space-y-3 shadow-xs">
@@ -721,6 +812,8 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
 
       {/* Form Modal (Add/Edit) */}

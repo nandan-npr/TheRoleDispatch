@@ -22,9 +22,7 @@ export const AdminLoginPage: React.FC = () => {
     setIsLoading(true);
     try {
       const result = await loginAdmin(username, password);
-      if (result.success) {
-        navigateToView('admin');
-      } else {
+      if (!result.success) {
         setErrorMessage(result.error || 'Invalid username or password');
       }
     } catch {

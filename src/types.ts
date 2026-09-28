@@ -90,3 +90,33 @@ export interface AdminFilters {
   location: string;
   sortBy: 'relevance' | 'az' | 'za' | 'company' | 'status';
 }
+
+export type FeedbackType =
+  | 'General Feedback'
+  | 'Job Listing Issue'
+  | 'Website Issue'
+  | 'Job Suggestion'
+  | 'Feature Request'
+  | 'Other';
+
+export type FeedbackStatus = 'unread' | 'read' | 'archived';
+
+export interface FeedbackRecord {
+  id: string;
+  name: string;
+  email: string;
+  type: FeedbackType;
+  subject: string;
+  message: string;
+  status: FeedbackStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FeedbackStats {
+  total: number;
+  unread: number;
+  read: number;
+  thisWeek: number;
+}
+

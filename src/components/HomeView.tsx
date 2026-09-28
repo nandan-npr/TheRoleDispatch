@@ -3,7 +3,7 @@ import { useJobs } from '../context/JobContext';
 import { Hero } from './Hero';
 import { JobCard } from './JobCard';
 import { CATEGORY_STRUCTURE } from '../data/categories';
-import { ArrowRight, Sparkles, Building2, CheckCircle, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Sparkles, Building2, CheckCircle, ShieldCheck, MessageSquare } from 'lucide-react';
 
 export const HomeView: React.FC = () => {
   const { publishedJobs, navigateToJobDetails, navigateToView, navigateToCategory } = useJobs();
@@ -192,6 +192,38 @@ export const HomeView: React.FC = () => {
                   Explore Listings
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Editorial Contact & Feedback Banner */}
+      <section className="border-t border-[#E7E2D9] bg-[#FFFFFF] py-12 sm:py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-[#FAF8F5] border border-[#E7E2D9] p-8 sm:p-10 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xs">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7A1C28] mb-1.5">
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Editorial Dispatch Desk</span>
+              </div>
+              <h3 className="font-serif text-2xl font-bold tracking-tight text-[#141416]">
+                Have a Question, Suggestion, or Found a Broken Listing?
+              </h3>
+              <p className="mt-2 text-xs sm:text-sm text-[#52525B] leading-relaxed">
+                We take listing authenticity seriously. If you encounter an expired requisition, wish to suggest a corporate vacancy, or have feedback on our editorial format, our team reviews every transmission.
+              </p>
+            </div>
+
+            <div className="shrink-0">
+              <button
+                id="home-contact-feedback-btn"
+                type="button"
+                onClick={() => navigateToView('contact')}
+                className="inline-flex items-center gap-2 px-6 py-3.5 bg-[#7A1C28] hover:bg-[#63141F] text-white text-xs font-semibold uppercase tracking-wider transition-colors shadow-xs cursor-pointer"
+              >
+                <MessageSquare className="w-4 h-4 text-[#C5A059]" />
+                <span>Contact & Feedback</span>
+              </button>
             </div>
           </div>
         </div>
