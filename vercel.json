@@ -5,7 +5,7 @@
       "destination": "/api/admin/:match*"
     },
     {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/|googlec526eaffc1b52bc7\\.html).*)",
       "destination": "/index.html"
     }
   ]

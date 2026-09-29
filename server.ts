@@ -48,6 +48,19 @@ app.all(['/api/admin/feedback', '/api/admin/feedback/:id'], async (req, res) => 
   return handler(req, res);
 });
 
+// Explicitly serve Google Search Console verification file
+app.get('/googlec526eaffc1b52bc7.html', (_req, res) => {
+  const publicPath = path.resolve(__dirname, 'public', 'googlec526eaffc1b52bc7.html');
+  if (fs.existsSync(publicPath)) {
+    return res.sendFile(publicPath);
+  }
+  const distPath = path.resolve(__dirname, 'dist', 'googlec526eaffc1b52bc7.html');
+  if (fs.existsSync(distPath)) {
+    return res.sendFile(distPath);
+  }
+  res.status(404).send('Not found');
+});
+
 // Setup Vite dev server middleware or serve production build
 async function setupServer() {
   if (!isProd) {
