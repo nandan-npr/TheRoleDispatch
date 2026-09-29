@@ -61,6 +61,36 @@ app.get('/googlec526eaffc1b52bc7.html', (_req, res) => {
   res.status(404).send('Not found');
 });
 
+// Explicitly serve sitemap.xml with XML content type
+app.get('/sitemap.xml', (_req, res) => {
+  const publicPath = path.resolve(__dirname, 'public', 'sitemap.xml');
+  if (fs.existsSync(publicPath)) {
+    res.type('application/xml');
+    return res.sendFile(publicPath);
+  }
+  const distPath = path.resolve(__dirname, 'dist', 'sitemap.xml');
+  if (fs.existsSync(distPath)) {
+    res.type('application/xml');
+    return res.sendFile(distPath);
+  }
+  res.status(404).type('text/plain').send('Sitemap not found');
+});
+
+// Explicitly serve robots.txt
+app.get('/robots.txt', (_req, res) => {
+  const publicPath = path.resolve(__dirname, 'public', 'robots.txt');
+  if (fs.existsSync(publicPath)) {
+    res.type('text/plain');
+    return res.sendFile(publicPath);
+  }
+  const distPath = path.resolve(__dirname, 'dist', 'robots.txt');
+  if (fs.existsSync(distPath)) {
+    res.type('text/plain');
+    return res.sendFile(distPath);
+  }
+  res.status(404).type('text/plain').send('Robots.txt not found');
+});
+
 // Setup Vite dev server middleware or serve production build
 async function setupServer() {
   if (!isProd) {
