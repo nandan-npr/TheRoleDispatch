@@ -10,7 +10,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdminLogin }) => {
   const { currentView, navigateToView, publishedJobs, isAdminAuthenticated } = useJobs();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const handleNav = (view: 'home' | 'jobs' | 'categories' | 'contact' | 'admin') => {
+  const handleNav = (view: 'home' | 'jobs' | 'categories' | 'contact' | 'admin' | 'admin-login') => {
     navigateToView(view);
     setMobileMenuOpen(false);
   };
@@ -101,18 +101,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdminLogin }) => {
               <span>Search Directory</span>
             </button>
 
-            {/* If admin is authenticated, show active session indicator (discreet, not public promo) */}
-            {isAdminAuthenticated && (
-              <button
-                id="nav-link-admin-active"
-                onClick={() => handleNav('admin')}
-                className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded bg-[#7A1C28]/10 text-[#7A1C28] border border-[#7A1C28]/20 hover:bg-[#7A1C28]/20 transition-colors"
-                title="Editor Session Active"
-              >
-                <Shield className="w-3 h-3" />
-                <span>Desk Active</span>
-              </button>
-            )}
+            {/* Editorial Desk Access Button: clicking always requires login */}
+            <button
+              id="nav-link-admin-active"
+              onClick={() => handleNav('admin-login')}
+              className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded bg-[#7A1C28]/10 text-[#7A1C28] border border-[#7A1C28]/20 hover:bg-[#7A1C28]/20 transition-colors cursor-pointer"
+              title="Editorial Desk"
+            >
+              <Shield className="w-3 h-3" />
+              <span>Desk Active</span>
+            </button>
           </nav>
 
           {/* Mobile menu button */}
@@ -194,15 +192,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenAdminLogin }) => {
             <span>Search Directory</span>
           </button>
 
-          {isAdminAuthenticated && (
-            <button
-              onClick={() => handleNav('admin')}
-              className="flex items-center gap-2 w-full py-2 text-left text-sm font-semibold text-[#7A1C28] bg-[#7A1C28]/5 px-3 rounded cursor-pointer"
-            >
-              <Shield className="w-4 h-4" />
-              <span>Editorial Desk</span>
-            </button>
-          )}
+          <button
+            id="mobile-nav-admin-active"
+            onClick={() => handleNav('admin-login')}
+            className="flex items-center gap-2 w-full py-2 text-left text-sm font-semibold text-[#7A1C28] bg-[#7A1C28]/5 px-3 rounded cursor-pointer"
+          >
+            <Shield className="w-4 h-4" />
+            <span>Desk Active</span>
+          </button>
         </div>
       )}
     </header>

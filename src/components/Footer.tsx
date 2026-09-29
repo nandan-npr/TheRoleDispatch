@@ -183,7 +183,7 @@ export const Footer: React.FC<FooterProps> = () => {
 
             <button
               id="footer-admin-login-trigger"
-              onClick={() => navigateToView('admin')}
+              onClick={() => navigateToView('admin-login')}
               className="hover:text-[#7A1C28] flex items-center gap-1.5 transition-colors cursor-pointer text-[#71717A]"
               title="Restricted publication management"
             >

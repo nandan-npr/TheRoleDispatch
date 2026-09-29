@@ -322,7 +322,7 @@ export const AdminDashboard: React.FC = () => {
 
           <button
             id="admin-logout-btn"
-            onClick={logoutAdmin}
+            onClick={() => logoutAdmin()}
             className="px-3.5 py-2 border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-800 text-xs font-semibold tracking-wider uppercase transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
             title="Invalidate session and sign out"
           >

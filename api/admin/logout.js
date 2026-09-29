@@ -16,20 +16,7 @@ export default async function handler(req, res) {
     req?.connection?.encrypted ||
     Boolean(req?.socket?.encrypted);
 
-  const cookieParts = [
-    'admin_session=',
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    'Max-Age=0',
-    'Expires=Thu, 01 Jan 1970 00:00:00 GMT'
-  ];
-
-  if (isHttps) {
-    cookieParts.push('Secure');
-  }
-
-  const expiredCookie = cookieParts.join('; ');
+  const expiredCookie = 'admin_session=; Path=/; HttpOnly; SameSite=None; Secure; Partitioned; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT';
 
   return sendResponse(res, 200, { success: true }, { 'Set-Cookie': expiredCookie });
 }

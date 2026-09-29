@@ -20,6 +20,13 @@ export function parseRouteFromUrl(): { view: ViewType; jobId: string | null } {
     return { view: 'admin-login', jobId: null };
   }
   if (active === 'admin' || active.startsWith('admin/')) {
+    const hasToken = typeof window !== 'undefined' && Boolean(sessionStorage.getItem('the_role_dispatch_admin_token'));
+    if (!hasToken) {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/admin/login') {
+        window.history.replaceState(null, '', '/admin/login');
+      }
+      return { view: 'admin-login', jobId: null };
+    }
     return { view: 'admin', jobId: null };
   }
   if (active.startsWith('job/')) {
@@ -70,7 +77,7 @@ interface JobContextType {
   
   // Admin Auth & Feedback
   loginAdmin: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logoutAdmin: () => Promise<void>;
+  logoutAdmin: (redirectUrl?: string) => Promise<void>;
   checkAdminAuth: () => Promise<boolean>;
   unreadFeedbackCount: number;
   setUnreadFeedbackCount: React.Dispatch<React.SetStateAction<number>>;
@@ -146,32 +153,68 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [authStatus, refreshFeedbackCount]);
 
-  // Validate session with server once on initial app mount
+  // Validate session with server on initial app mount ONLY if starting on an admin route with active token
   useEffect(() => {
+    const route = parseRouteFromUrl();
+    const hasToken = Boolean(authService.getAuthToken());
+
+    if (route.view !== 'admin' || !hasToken) {
+      setAuthStatus('unauthenticated');
+      return;
+    }
+
     let isMounted = true;
     const seq = ++authSequenceRef.current;
-    console.log('[AUTH] verify started: initial startup (seq:', seq, ')');
+    console.log('[AUTH] verify started: admin startup (seq:', seq, ')');
 
     authService.verifySession().then(isValid => {
       if (!isMounted) return;
-      if (seq !== authSequenceRef.current) {
-        console.log('[AUTH] ignoring stale initial verify result (seq:', seq, 'current:', authSequenceRef.current, ')');
-        return;
-      }
+      if (seq !== authSequenceRef.current) return;
       console.log('[AUTH] verify result:', isValid);
       console.log('[AUTH] authentication state changed:', isValid ? 'authenticated' : 'unauthenticated');
-      setAuthStatus(isValid ? 'authenticated' : 'unauthenticated');
+      if (isValid) {
+        setAuthStatus('authenticated');
+      } else {
+        setAuthStatus('unauthenticated');
+        setCurrentView('admin-login');
+        if (window.location.pathname !== '/admin/login') {
+          window.history.replaceState(null, '', '/admin/login');
+        }
+      }
     }).catch(() => {
       if (isMounted && seq === authSequenceRef.current) {
         console.log('[AUTH] verify result: false (error)');
-        console.log('[AUTH] authentication state changed: unauthenticated');
         setAuthStatus('unauthenticated');
+        setCurrentView('admin-login');
+        if (window.location.pathname !== '/admin/login') {
+          window.history.replaceState(null, '', '/admin/login');
+        }
       }
     });
 
     return () => {
       isMounted = false;
     };
+  }, []);
+
+  // Invalidate admin session on server and client
+  const logoutAdmin = useCallback(async (redirectUrl?: string) => {
+    console.log('[AUTH] logout called');
+    ++authSequenceRef.current;
+    setAuthStatus('unauthenticated');
+    setUnreadFeedbackCount(0);
+    try {
+      await authService.logout();
+    } catch {
+      // silent
+    }
+    const finalUrl = redirectUrl !== undefined ? redirectUrl : '/admin/login';
+    if (finalUrl === '/admin/login') {
+      setCurrentView('admin-login');
+    }
+    if (typeof window !== 'undefined' && finalUrl && window.location.pathname !== finalUrl) {
+      window.history.replaceState(null, '', finalUrl);
+    }
   }, []);
 
   // Backup sync to localStorage when jobs change
@@ -189,6 +232,9 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const selectedJob = selectedJobId ? jobs.find(j => j.id === selectedJobId) || null : null;
 
   const navigateToJobDetails = useCallback((jobId: string) => {
+    if (currentView === 'admin') {
+      logoutAdmin('/job/' + jobId);
+    }
     setSelectedJobId(jobId);
     setCurrentView('job-details');
     const targetUrl = `/job/${jobId}`;
@@ -196,9 +242,12 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.history.pushState(null, '', targetUrl);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  }, [currentView, logoutAdmin]);
 
   const navigateToCategory = useCallback((category: JobCategory) => {
+    if (currentView === 'admin') {
+      logoutAdmin('/jobs');
+    }
     setSelectedCategoryForBrowse(category);
     setFilters(prev => ({ ...prev, category }));
     setCurrentView('jobs');
@@ -206,7 +255,7 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.history.pushState(null, '', '/jobs');
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  }, [currentView, logoutAdmin]);
 
   const navigateToView = useCallback((view: ViewType) => {
     if (view !== 'job-details') {
@@ -226,7 +275,7 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       targetView = 'contact';
       targetUrl = '/contact';
     } else if (view === 'admin') {
-      if (authStatus === 'authenticated' || authStatus === 'checking') {
+      if (authStatus === 'authenticated') {
         targetView = 'admin';
         targetUrl = '/admin/dashboard';
       } else {
@@ -238,12 +287,19 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       targetUrl = '/admin/login';
     }
 
+    // CRITICAL: If leaving the admin dashboard to ANY other view (public or login),
+    // immediately log out and invalidate the session on server & client!
+    if (currentView === 'admin' && targetView !== 'admin') {
+      console.log('[AUTH] Leaving admin dashboard via navigateToView -> immediate session logout');
+      logoutAdmin(targetUrl);
+    }
+
     setCurrentView(targetView);
     if (window.location.pathname !== targetUrl) {
       window.history.pushState(null, '', targetUrl);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [authStatus]);
+  }, [authStatus, currentView, logoutAdmin]);
 
   const updateFilter = <K extends keyof JobFilters>(key: K, value: JobFilters[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -368,16 +424,6 @@ export const JobProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     console.log('[AUTH] login failed:', res.error);
     return { success: false, error: res.error || 'Invalid username or password' };
-  };
-
-  const logoutAdmin = async () => {
-    console.log('[AUTH] logout called');
-    ++authSequenceRef.current;
-    await authService.logout();
-    console.log('[AUTH] authentication state changed: unauthenticated');
-    setAuthStatus('unauthenticated');
-    setCurrentView('admin-login');
-    window.history.replaceState(null, '', '/admin/login');
   };
 
   const checkAdminAuth = async (): Promise<boolean> => {

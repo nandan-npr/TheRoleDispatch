@@ -22,18 +22,40 @@ const AppContent: React.FC = () => {
     authStatus,
     isAdminAuthenticated,
     isAuthChecking,
-    setSelectedJobId
+    setSelectedJobId,
+    logoutAdmin
   } = useJobs();
+
+  const currentViewRef = React.useRef(currentView);
+  useEffect(() => {
+    currentViewRef.current = currentView;
+  }, [currentView]);
 
   // Listen to popstate and hashchange strictly for user browser Back/Forward navigation
   useEffect(() => {
     const handlePopState = () => {
+      const prevView = currentViewRef.current;
       const route = parseRouteFromUrl();
       setSelectedJobId(route.jobId);
-      if (route.view === 'admin' && authStatus === 'unauthenticated') {
+
+      // If user was on admin dashboard and navigated away via browser Back/Forward to a public view:
+      // IMMEDIATELY log out and invalidate the session!
+      if (prevView === 'admin' && route.view !== 'admin') {
+        console.log('[AUTH] Browser Back/Forward away from admin dashboard -> logging out');
+        logoutAdmin(window.location.pathname);
+        setCurrentView(route.view);
+        return;
+      }
+
+      // If user is trying to navigate to admin dashboard via Back/Forward but is NOT authenticated:
+      // Redirect to /admin/login immediately!
+      if (route.view === 'admin' && authStatus !== 'authenticated') {
+        console.log('[AUTH] Blocked unauthenticated attempt to access admin dashboard -> redirecting to /admin/login');
+        window.history.replaceState(null, '', '/admin/login');
         setCurrentView('admin-login');
         return;
       }
+
       setCurrentView(route.view);
     };
 
@@ -44,7 +66,37 @@ const AppContent: React.FC = () => {
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('hashchange', handlePopState);
     };
-  }, [authStatus, setCurrentView, setSelectedJobId]);
+  }, [authStatus, logoutAdmin, setCurrentView, setSelectedJobId]);
+
+  // Guard admin URLs: whenever unauthenticated, never allow staying on /admin/dashboard
+  useEffect(() => {
+    if (authStatus === 'unauthenticated') {
+      const path = window.location.pathname.toLowerCase();
+      if ((path === '/admin' || path.startsWith('/admin/')) && path !== '/admin/login') {
+        window.history.replaceState(null, '', '/admin/login');
+        setCurrentView('admin-login');
+      }
+    }
+  }, [authStatus, setCurrentView]);
+
+  // Handle page exit/unload when on admin dashboard
+  useEffect(() => {
+    const handlePageExit = () => {
+      if (currentViewRef.current === 'admin') {
+        try {
+          navigator.sendBeacon('/api/admin/logout');
+          sessionStorage.removeItem('the_role_dispatch_admin_token');
+        } catch {
+          // silent
+        }
+      }
+    };
+
+    window.addEventListener('pagehide', handlePageExit);
+    return () => {
+      window.removeEventListener('pagehide', handlePageExit);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#FBF9F5] text-[#141416] flex flex-col font-sans selection:bg-[#7A1C28]/15 selection:text-[#7A1C28]">
